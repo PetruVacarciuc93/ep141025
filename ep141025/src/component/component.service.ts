@@ -1,42 +1,38 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CreateComponentDto } from './dto/create-component.dto';
 import { UpdateComponentDto } from './dto/update-component.dto';
-import { PCService } from '../pc/pc.service';
-import { PCComponent } from './component.entity';
+import { Component } from './component.model';
 
 @Injectable()
 export class ComponentService {
-  constructor(
-    @InjectRepository(PCComponent) private compRepo: Repository<PCComponent>,
-    private pcService: PCService,
-  ) {}
+  private components: Component[] = []; // folosește tipul Component
 
-  async create(dto: CreateComponentDto) {
-    const pc = await this.pcService.findOne(dto.pcId);
-    const component = this.compRepo.create({ ...dto, pc });
-    return this.compRepo.save(component);
+  create(dto: CreateComponentDto): Component {
+    const component: Component = { id: this.components.length + 1, ...dto };
+    this.components.push(component);
+    return component;
   }
 
-  findAll() {
-    return this.compRepo.find({ relations: ['pc'] });
+  findAll(): Component[] {
+    return this.components;
   }
 
-  async findOne(id: number) {
-    const component = await this.compRepo.findOne({ where: { id }, relations: ['pc'] });
+  findOne(id: number): Component {
+    const component = this.components.find(c => c.id === id);
     if (!component) throw new NotFoundException('Component not found');
     return component;
   }
 
-  async update(id: number, dto: UpdateComponentDto) {
-    const component = await this.findOne(id);
+  update(id: number, dto: UpdateComponentDto): Component {
+    const component = this.findOne(id);
     Object.assign(component, dto);
-    return this.compRepo.save(component);
+    return component;
   }
 
-  async remove(id: number) {
-    const component = await this.findOne(id);
-    return this.compRepo.remove(component);
+  remove(id: number): Component {
+    const index = this.components.findIndex(c => c.id === id);
+    if (index === -1) throw new NotFoundException('Component not found');
+    const [removed] = this.components.splice(index, 1);
+    return removed;
   }
 }

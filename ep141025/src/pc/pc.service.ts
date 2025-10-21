@@ -1,25 +1,31 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PC } from './pc.entity';
 import { CreatePCDto } from './dto/create-pc.dto';
 import { UpdatePCDto } from './dto/update-pc.dto';
 
+type PCType = {
+  id: number;
+  name: string;
+  manufacturer: string;
+  totalComponents: number;
+  components: any[];
+};
+
 @Injectable()
 export class PCService {
-  constructor(@InjectRepository(PC) private pcRepo: Repository<PC>) {}
+  private pcs: PCType[] = [];
 
   create(dto: CreatePCDto) {
-    const pc = this.pcRepo.create(dto);
-    return this.pcRepo.save(pc);
+    const pc: PCType = { id: this.pcs.length + 1, ...dto, components: [] };
+    this.pcs.push(pc);
+    return pc;
   }
 
   findAll() {
-    return this.pcRepo.find({ relations: ['components'] });
+    return this.pcs;
   }
 
   async findOne(id: number) {
-    const pc = await this.pcRepo.findOne({ where: { id }, relations: ['components'] });
+    const pc = this.pcs.find(p => p.id === id);
     if (!pc) throw new NotFoundException('PC not found');
     return pc;
   }
@@ -27,11 +33,13 @@ export class PCService {
   async update(id: number, dto: UpdatePCDto) {
     const pc = await this.findOne(id);
     Object.assign(pc, dto);
-    return this.pcRepo.save(pc);
+    return pc;
   }
 
   async remove(id: number) {
-    const pc = await this.findOne(id);
-    return this.pcRepo.remove(pc);
+    const index = this.pcs.findIndex(p => p.id === id);
+    if (index === -1) throw new NotFoundException('PC not found');
+    const [removed] = this.pcs.splice(index, 1);
+    return removed;
   }
 }
